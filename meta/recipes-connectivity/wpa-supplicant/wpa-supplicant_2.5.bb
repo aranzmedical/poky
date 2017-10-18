@@ -1,16 +1,16 @@
 SUMMARY = "Client for Wi-Fi Protected Access (WPA)"
-HOMEPAGE = "http://hostap.epitest.fi/wpa_supplicant/"
-BUGTRACKER = "http://hostap.epitest.fi/bugz/"
+HOMEPAGE = "http://w1.fi/wpa_supplicant/"
+BUGTRACKER = "http://w1.fi/security/"
 SECTION = "network"
 LICENSE = "BSD"
-LIC_FILES_CHKSUM = "file://COPYING;md5=ab87f20cd7e8c0d0a6539b34d3791d0e \
-                    file://README;beginline=1;endline=56;md5=a07250b28e857455336bb59fc31cb845 \
-                    file://wpa_supplicant/wpa_supplicant.c;beginline=1;endline=12;md5=e8e021e30f3a6ab7c341b66b86626a5a"
-DEPENDS = "dbus libnl libgcrypt"
+LIC_FILES_CHKSUM = "file://COPYING;md5=36b27801447e0662ee0138d17fe93880 \
+                    file://README;beginline=1;endline=56;md5=7f393579f8b109fe91f3b9765d26c7d3 \
+                    file://wpa_supplicant/wpa_supplicant.c;beginline=1;endline=12;md5=3430fda79f2ba1dd545f0b3c4d6e4d24"
+DEPENDS = "dbus libnl"
 RRECOMMENDS_${PN} = "wpa-supplicant-passphrase wpa-supplicant-cli"
 
 PACKAGECONFIG ??= "gnutls"
-PACKAGECONFIG[gnutls] = ",,gnutls"
+PACKAGECONFIG[gnutls] = ",,gnutls libgcrypt"
 PACKAGECONFIG[openssl] = ",,openssl"
 
 inherit systemd
@@ -18,25 +18,21 @@ inherit systemd
 SYSTEMD_SERVICE_${PN} = "wpa_supplicant.service wpa_supplicant-nl80211@.service wpa_supplicant-wired@.service"
 SYSTEMD_AUTO_ENABLE = "disable"
 
-SRC_URI = "http://hostap.epitest.fi/releases/wpa_supplicant-${PV}.tar.gz \
+SRC_URI = "http://w1.fi/releases/wpa_supplicant-${PV}.tar.gz  \
            file://defconfig \
            file://wpa-supplicant.sh \
            file://wpa_supplicant.conf \
            file://wpa_supplicant.conf-sane \
            file://99_wpa_supplicant \
-           file://fix-libnl3-host-contamination.patch \
-           file://0001-P2P-Validate-SSID-element-length-before-copying-it-C.patch \
-           file://0001-AP-WMM-Fix-integer-underflow-in-WMM-Action-frame-par.patch \
-           file://0001-WPS-Fix-HTTP-chunked-transfer-encoding-parser.patch \
-           file://0001-EAP-pwd-peer-Fix-payload-length-validation-for-Commi.patch \
-           file://0002-EAP-pwd-server-Fix-payload-length-validation-for-Com.patch \
-           file://0003-EAP-pwd-peer-Fix-Total-Length-parsing-for-fragment-r.patch \
-           file://0004-EAP-pwd-server-Fix-Total-Length-parsing-for-fragment.patch \
-           file://0005-EAP-pwd-peer-Fix-asymmetric-fragmentation-behavior.patch \
-           file://0001-NFC-Fix-payload-length-validation-in-NDEF-record-par.patch \
+           file://0001-WPS-Reject-a-Credential-with-invalid-passphrase.patch \
+           file://0002-Remove-newlines-from-wpa_supplicant-config-network-o.patch \
+           file://0001-Reject-psk-parameter-set-with-invalid-passphrase-cha.patch \
+           file://0002-Reject-SET_CRED-commands-with-newline-characters-in-.patch \
+           file://0003-Reject-SET-commands-with-newline-characters-in-the-s.patch \
+           file://key-replay-cve-multiple.patch \
           "
-SRC_URI[md5sum] = "f2ed8fef72cf63d8d446a2d0a6da630a"
-SRC_URI[sha256sum] = "eaaa5bf3055270e521b2dff64f2d203ec8040f71958b8588269a82c00c9d7b6a"
+SRC_URI[md5sum] = "96ff75c3a514f1f324560a2376f13110"
+SRC_URI[sha256sum] = "cce55bae483b364eae55c35ba567c279be442ed8bab5b80a3c7fb0d057b9b316"
 
 S = "${WORKDIR}/wpa_supplicant-${PV}"
 
@@ -95,13 +91,12 @@ do_install () {
 	cd ${D}${sysconfdir}/network/ && \
 	ln -sf ../if-pre-up.d/wpa-supplicant if-post-down.d/wpa-supplicant
 
+	install -d ${D}/${sysconfdir}/dbus-1/system.d
+	install -m 644 ${S}/wpa_supplicant/dbus/dbus-wpa_supplicant.conf ${D}/${sysconfdir}/dbus-1/system.d
 	install -d ${D}/${datadir}/dbus-1/system-services
 	install -m 644 ${S}/wpa_supplicant/dbus/*.service ${D}/${datadir}/dbus-1/system-services
 
 	if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
-		install -d ${D}/${sysconfdir}/dbus-1/system.d
-		install -m 644 ${S}/wpa_supplicant/dbus/dbus-wpa_supplicant.conf ${D}/${sysconfdir}/dbus-1/system.d
-
 		install -d ${D}/${systemd_unitdir}/system
 		install -m 644 ${S}/wpa_supplicant/systemd/*.service ${D}/${systemd_unitdir}/system
 	fi
